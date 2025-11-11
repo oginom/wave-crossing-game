@@ -16,7 +16,23 @@ pub enum MonsterState {
     Reached,
 }
 
-/// 移動情報
+/// モンスターの本来のパラメータ（アイテムなどの影響を受けない基本値）
+#[derive(Component, Debug, Clone, Copy)]
+pub struct MonsterProperty {
+    pub base_direction: Direction,
+    pub base_speed: f32,
+}
+
+impl MonsterProperty {
+    pub fn new(direction: Direction, speed: f32) -> Self {
+        Self {
+            base_direction: direction,
+            base_speed: speed,
+        }
+    }
+}
+
+/// 移動情報（実際の移動に使用される、アイテムや環境の影響を受けた値）
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Movement {
     pub direction: Direction,

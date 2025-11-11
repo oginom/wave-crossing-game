@@ -117,6 +117,7 @@ fn spawn_monster(commands: &mut Commands, spawn_def: &SpawnDefinition) {
     commands.spawn((
         Monster,
         MonsterState::Staging,
+        MonsterProperty::new(spawn_def.direction, MONSTER_SPEED),
         Movement::new(spawn_def.direction, MONSTER_SPEED),
         StagingTimer::new(2.0), // 2秒待機
         CollisionBox::new(Vec2::splat(monster_size)),
