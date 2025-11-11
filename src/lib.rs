@@ -5,6 +5,7 @@ pub mod feature;
 
 use feature::player::PlayerPlugin;
 use feature::world::WorldPlugin;
+use feature::monster::MonsterPlugin;
 
 #[derive(States, Default, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum GameState {
@@ -19,6 +20,7 @@ impl Plugin for AppPlugin {
         app.init_state::<GameState>()
             .add_plugins((
                 WorldPlugin,
+                MonsterPlugin,
                 PlayerPlugin,
             ));
     }
