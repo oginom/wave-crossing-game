@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use super::components::*;
+use crate::core::GRID_SIZE;
 
 /// 衝突検知システム
 /// 次フレームの予測位置と現在の他モンスターの位置で矩形衝突判定を行う
@@ -21,9 +22,10 @@ pub fn collision_detection_system(
             continue;
         }
 
-        // 自分の次フレーム予測位置を計算
-        let velocity = movement.direction.to_vector() * movement.speed;
-        let predicted_pos = transform.translation + velocity.extend(0.0) * time.delta_secs();
+        // 自分の予測位置を計算（0.1 * SIZE = 6.4ピクセル先）
+        let direction_vector = movement.direction.to_vector();
+        let check_distance = 0.1 * GRID_SIZE;
+        let predicted_pos = transform.translation + direction_vector.extend(0.0) * check_distance;
 
         collision_state.is_colliding = false;
 
