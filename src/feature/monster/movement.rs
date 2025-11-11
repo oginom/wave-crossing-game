@@ -5,10 +5,11 @@ use super::components::*;
 /// モンスターを移動させるシステム
 pub fn monster_movement_system(
     time: Res<Time>,
-    mut query: Query<(&Movement, &mut Transform, &mut MonsterState), With<Monster>>,
+    mut query: Query<(&Movement, &mut Transform, &mut MonsterState, &CollisionState), With<Monster>>,
 ) {
-    for (movement, mut transform, mut state) in &mut query {
-        if *state == MonsterState::Moving {
+    for (movement, mut transform, mut state, collision) in &mut query {
+        // Moving状態で、かつ衝突していない場合のみ移動
+        if *state == MonsterState::Moving && !collision.is_colliding {
             // 進行方向に移動
             let velocity = movement.direction.to_vector() * movement.speed;
             transform.translation += velocity.extend(0.0) * time.delta_secs();

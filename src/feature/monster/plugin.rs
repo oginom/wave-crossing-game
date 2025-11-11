@@ -3,6 +3,7 @@ use crate::GameState;
 use super::spawn::*;
 use super::staging::*;
 use super::movement::*;
+use super::collision::*;
 use super::despawn::*;
 
 /// モンスター機能を提供するプラグイン
@@ -17,6 +18,7 @@ impl Plugin for MonsterPlugin {
                 (
                     spawn_monsters_system,
                     staging_timer_system,
+                    collision_detection_system,
                     monster_movement_system,
                     despawn_reached_monsters,
                 )

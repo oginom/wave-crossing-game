@@ -52,3 +52,15 @@ impl CollisionBox {
         Self { size }
     }
 }
+
+/// 衝突状態
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct CollisionState {
+    pub is_colliding: bool,
+}
+
+impl CollisionState {
+    pub fn new() -> Self {
+        Self { is_colliding: false }
+    }
+}
