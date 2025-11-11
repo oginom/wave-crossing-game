@@ -3,7 +3,6 @@ use bevy::prelude::*;
 pub mod core;
 pub mod feature;
 
-use feature::player::PlayerPlugin;
 use feature::world::WorldPlugin;
 use feature::monster::MonsterPlugin;
 use feature::item::ItemPlugin;
@@ -23,7 +22,6 @@ impl Plugin for AppPlugin {
                 WorldPlugin,
                 MonsterPlugin,
                 ItemPlugin,
-                PlayerPlugin,
             ));
     }
 }
