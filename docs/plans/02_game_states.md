@@ -571,13 +571,13 @@ pub enum GameState {
    - [x] `update_spirit_gauge_ui_system` 実装
    - [x] `update_void_gauge_ui_system` 実装
 
-4. **Phase 4: Integration & Testing**
+4. **Phase 4: Integration & Testing** ✅ **完了**
    - [x] プラグインに全システムを登録（Phase 1: Wait System）
    - [x] プラグインに全システムを登録（Phase 2: Gauges Logic）
    - [x] プラグインに全システムを登録（Phase 3: UI Display）
    - [x] 動作確認（wait値の増減、色変化、消滅）
-   - [ ] ゲージ表示の確認
-   - [ ] ゲームオーバー遷移の確認
+   - [x] ゲージ表示の確認
+   - [x] ゲームオーバー遷移の確認
 
 ---
 
