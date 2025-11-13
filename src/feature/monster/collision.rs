@@ -5,7 +5,6 @@ use crate::core::GRID_SIZE;
 /// 衝突検知システム
 /// 次フレームの予測位置と現在の他モンスターの位置で矩形衝突判定を行う
 pub fn collision_detection_system(
-    time: Res<Time>,
     mut query: Query<(Entity, &Transform, &Movement, &CollisionBox, &mut CollisionState, &MonsterState), With<Monster>>,
 ) {
     // 全モンスターの位置情報を事前に収集

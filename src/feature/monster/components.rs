@@ -80,3 +80,40 @@ impl CollisionState {
         Self { is_colliding: false }
     }
 }
+
+/// 待機メーター（モンスターが停止している時間を計測）
+#[derive(Component, Debug, Clone, Copy)]
+pub struct WaitMeter {
+    /// 現在の待機時間（秒）
+    pub current: f32,
+    /// 消滅する待機時間の閾値（秒）
+    pub threshold: f32,
+    /// 前フレームでの移動状態（速度がゼロかどうか）
+    pub was_stopped: bool,
+}
+
+impl WaitMeter {
+    pub fn new(threshold: f32) -> Self {
+        Self {
+            current: 0.0,
+            threshold,
+            was_stopped: false,
+        }
+    }
+
+    /// 進行度の比率（0.0～1.0）
+    pub fn progress_ratio(&self) -> f32 {
+        (self.current / self.threshold).min(1.0)
+    }
+
+    /// 閾値を超えているか
+    pub fn is_expired(&self) -> bool {
+        self.current >= self.threshold
+    }
+}
+
+impl Default for WaitMeter {
+    fn default() -> Self {
+        Self::new(10.0) // デフォルトは10秒
+    }
+}

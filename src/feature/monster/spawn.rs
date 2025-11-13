@@ -122,6 +122,7 @@ fn spawn_monster(commands: &mut Commands, spawn_def: &SpawnDefinition) {
         StagingTimer::new(2.0), // 2秒待機
         CollisionBox::new(Vec2::splat(monster_size)),
         CollisionState::new(),
+        WaitMeter::new(10.0), // 10秒で消滅
         Sprite {
             color: Color::srgb(MONSTER_COLOR.0, MONSTER_COLOR.1, MONSTER_COLOR.2),
             custom_size: Some(Vec2::splat(monster_size)),

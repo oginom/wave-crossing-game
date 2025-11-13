@@ -551,18 +551,18 @@ pub enum GameState {
 
 ## 実装順序
 
-1. **Phase 1: Wait System**
-   - [ ] `WaitMeter` コンポーネント追加
-   - [ ] `update_wait_meter_system` 実装
-   - [ ] `update_monster_color_system` 実装
-   - [ ] `MonsterDespawnEvent` 定義
-   - [ ] `despawn_expired_monsters_system` 実装
+1. **Phase 1: Wait System** ✅ **完了**
+   - [x] `WaitMeter` コンポーネント追加
+   - [x] `update_wait_meter_system` 実装
+   - [x] `update_monster_color_system` 実装
+   - [x] `MonsterDespawnEvent` 定義
+   - [x] `despawn_expired_monsters_system` 実装
 
 2. **Phase 2: Gauges Logic**
    - [ ] `PlayerGauges` リソース実装
    - [ ] `SpiritGauge` / `VoidGauge` 実装
    - [ ] `update_gauges_on_monster_event_system` 実装
-   - [ ] ゴール到達時のイベント発行処理追加（既存システムに統合）
+   - [x] ゴール到達時のイベント発行処理追加（既存システムに統合）
    - [ ] `check_game_over_system` 実装
    - [ ] `GameState::GameOver` 追加
 
@@ -572,7 +572,9 @@ pub enum GameState {
    - [ ] `update_void_gauge_ui_system` 実装
 
 4. **Phase 4: Integration & Testing**
-   - [ ] プラグインに全システムを登録
+   - [x] プラグインに全システムを登録（Phase 1: Wait System）
+   - [ ] プラグインに全システムを登録（Phase 2: Gauges Logic）
+   - [ ] プラグインに全システムを登録（Phase 3: UI Display）
    - [ ] 動作確認（wait値の増減、色変化、消滅）
    - [ ] ゲージ表示の確認
    - [ ] ゲームオーバー遷移の確認
