@@ -566,15 +566,15 @@ pub enum GameState {
    - [x] `check_game_over_system` 実装
    - [x] `GameState::GameOver` 追加
 
-3. **Phase 3: UI Display**
-   - [ ] `setup_gauges_ui_system` 実装
-   - [ ] `update_spirit_gauge_ui_system` 実装
-   - [ ] `update_void_gauge_ui_system` 実装
+3. **Phase 3: UI Display** ✅ **完了**
+   - [x] `setup_gauges_ui_system` 実装
+   - [x] `update_spirit_gauge_ui_system` 実装
+   - [x] `update_void_gauge_ui_system` 実装
 
 4. **Phase 4: Integration & Testing**
    - [x] プラグインに全システムを登録（Phase 1: Wait System）
    - [x] プラグインに全システムを登録（Phase 2: Gauges Logic）
-   - [ ] プラグインに全システムを登録（Phase 3: UI Display）
+   - [x] プラグインに全システムを登録（Phase 3: UI Display）
    - [x] 動作確認（wait値の増減、色変化、消滅）
    - [ ] ゲージ表示の確認
    - [ ] ゲームオーバー遷移の確認
