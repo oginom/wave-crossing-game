@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use crate::core::{Direction, GRID_SIZE, FIELD_WIDTH, FIELD_HEIGHT, MONSTER_SPEED, MONSTER_COLOR, grid_to_world, GridPosition};
+use crate::core::{Direction, GRID_SIZE, FIELD_WIDTH, FIELD_HEIGHT, MONSTER_COLOR, grid_to_world, GridPosition};
+use crate::core::level;
 use super::components::*;
 
 /// モンスターのスポーン定義
@@ -117,12 +118,12 @@ fn spawn_monster(commands: &mut Commands, spawn_def: &SpawnDefinition) {
     commands.spawn((
         Monster,
         MonsterState::Staging,
-        MonsterProperty::new(spawn_def.direction, MONSTER_SPEED),
-        Movement::new(spawn_def.direction, MONSTER_SPEED),
-        StagingTimer::new(2.0), // 2秒待機
+        MonsterProperty::new(spawn_def.direction, level::MONSTER_SPEED),
+        Movement::new(spawn_def.direction, level::MONSTER_SPEED),
+        StagingTimer::new(level::STAGING_DURATION),
         CollisionBox::new(Vec2::splat(monster_size)),
         CollisionState::new(),
-        WaitMeter::new(10.0), // 10秒で消滅
+        WaitMeter::new(level::WAIT_THRESHOLD),
         Sprite {
             color: Color::srgb(MONSTER_COLOR.0, MONSTER_COLOR.1, MONSTER_COLOR.2),
             custom_size: Some(Vec2::splat(monster_size)),

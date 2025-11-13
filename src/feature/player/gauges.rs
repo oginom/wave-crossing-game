@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use crate::feature::monster::{MonsterDespawnEvent, DespawnCause};
 use crate::GameState;
+use crate::core::level;
 
 /// プレイヤーのゲージ（魂と虚）
 #[derive(Resource, Debug, Clone)]
@@ -12,8 +13,8 @@ pub struct PlayerGauges {
 impl Default for PlayerGauges {
     fn default() -> Self {
         Self {
-            spirit: SpiritGauge::new(SPIRIT_MAX, SPIRIT_INITIAL),
-            void: VoidGauge::new(VOID_MAX),
+            spirit: SpiritGauge::new(level::SPIRIT_MAX, level::SPIRIT_INITIAL),
+            void: VoidGauge::new(level::VOID_MAX),
         }
     }
 }
@@ -85,14 +86,6 @@ impl VoidGauge {
     }
 }
 
-// ゲージパラメータ
-pub const SPIRIT_MAX: f32 = 100.0;
-pub const SPIRIT_INITIAL: f32 = 50.0;
-pub const SPIRIT_GAIN_PER_GOAL: f32 = 10.0;
-
-pub const VOID_MAX: f32 = 100.0;
-pub const VOID_GAIN_PER_DESPAWN: f32 = 5.0;
-
 /// モンスター消滅イベントを受けてゲージを更新
 pub fn update_gauges_on_monster_event_system(
     mut gauges: ResMut<PlayerGauges>,
@@ -101,19 +94,19 @@ pub fn update_gauges_on_monster_event_system(
     for event in events.read() {
         match event.cause {
             DespawnCause::ReachedGoal => {
-                gauges.spirit.add(SPIRIT_GAIN_PER_GOAL);
+                gauges.spirit.add(level::SPIRIT_GAIN_PER_GOAL);
                 info!(
                     "Spirit +{}: {:.1}/{:.1}",
-                    SPIRIT_GAIN_PER_GOAL,
+                    level::SPIRIT_GAIN_PER_GOAL,
                     gauges.spirit.current,
                     gauges.spirit.max
                 );
             }
             DespawnCause::WaitExpired => {
-                gauges.void.add(VOID_GAIN_PER_DESPAWN);
+                gauges.void.add(level::VOID_GAIN_PER_DESPAWN);
                 info!(
                     "Void +{}: {:.1}/{:.1}",
-                    VOID_GAIN_PER_DESPAWN,
+                    level::VOID_GAIN_PER_DESPAWN,
                     gauges.void.current,
                     gauges.void.max
                 );

@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use crate::core::Direction;
+use crate::core::level;
 
 /// モンスターを示すマーカーコンポーネント
 #[derive(Component)]
@@ -114,6 +115,6 @@ impl WaitMeter {
 
 impl Default for WaitMeter {
     fn default() -> Self {
-        Self::new(10.0) // デフォルトは10秒
+        Self::new(level::WAIT_THRESHOLD)
     }
 }
