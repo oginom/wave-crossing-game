@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use crate::core::Direction;
 use crate::core::level;
+use super::definitions::MonsterKind;
 
 /// モンスターを示すマーカーコンポーネント
 #[derive(Component)]
@@ -20,15 +21,21 @@ pub enum MonsterState {
 /// モンスターの本来のパラメータ（アイテムなどの影響を受けない基本値）
 #[derive(Component, Debug, Clone, Copy)]
 pub struct MonsterProperty {
+    pub kind: MonsterKind,
     pub base_direction: Direction,
     pub base_speed: f32,
+    pub base_size: f32,
+    pub base_color: (f32, f32, f32),
 }
 
 impl MonsterProperty {
-    pub fn new(direction: Direction, speed: f32) -> Self {
+    pub fn new(kind: MonsterKind, direction: Direction, speed: f32, size: f32, color: (f32, f32, f32)) -> Self {
         Self {
+            kind,
             base_direction: direction,
             base_speed: speed,
+            base_size: size,
+            base_color: color,
         }
     }
 }
