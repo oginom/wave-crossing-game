@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use crate::GameState;
 use super::definitions::*;
+use super::special_behavior::*;
 use super::spawn::*;
 use super::staging::*;
 use super::movement::*;
@@ -24,6 +25,7 @@ impl Plugin for MonsterPlugin {
                 (
                     spawn_monsters_system,
                     staging_timer_system,
+                    my_pace_system,  // 特殊挙動システムを追加
                     collision_detection_system,
                     monster_movement_system,
                     update_wait_meter_system,

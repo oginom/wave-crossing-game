@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use super::special_behavior::SpecialBehavior;
 
 /// モンスターの種類
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -18,6 +19,7 @@ pub struct MonsterDefinition {
     pub size: f32,
     pub color: (f32, f32, f32),
     pub wait_threshold: f32,
+    pub special_behavior: SpecialBehavior,
 }
 
 /// RONファイルの構造

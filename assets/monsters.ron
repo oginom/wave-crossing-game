@@ -6,6 +6,7 @@
             size: 0.6,
             color: (0.2, 0.8, 0.5),  // 緑色（河童）
             wait_threshold: 10.0,
+            special_behavior: None,  // 特殊挙動なし
         ),
         (
             kind: Ghost,
@@ -13,6 +14,7 @@
             size: 0.5,
             color: (0.9, 0.9, 1.0),  // 白っぽい（ゴースト）
             wait_threshold: 8.0,
+            special_behavior: PassThrough,  // すり抜け
         ),
         (
             kind: Bakeneko,
@@ -20,6 +22,10 @@
             size: 0.8,
             color: (0.3, 0.2, 0.4),  // 紫がかった色（化け猫）
             wait_threshold: 15.0,
+            special_behavior: MyPace(
+                stop_interval: 3.0,  // 3秒ごとに立ち止まる
+                stop_duration: 1.5,  // 1.5秒間立ち止まる
+            ),
         ),
     ]
 )

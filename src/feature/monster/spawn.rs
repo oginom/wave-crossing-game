@@ -3,6 +3,7 @@ use crate::core::{Direction, GRID_SIZE, FIELD_WIDTH, FIELD_HEIGHT, grid_to_world
 use crate::core::level;
 use super::components::*;
 use super::definitions::{MonsterDefinitions, MonsterKind};
+use super::special_behavior::{SpecialBehavior, MyPaceTimer};
 
 /// モンスターのスポーン定義
 #[derive(Debug, Clone)]
@@ -123,7 +124,7 @@ fn spawn_monster(
     let position = get_staging_position(spawn_def.direction, spawn_def.grid_pos);
     let monster_size = GRID_SIZE * def.size;
 
-    commands.spawn((
+    let mut entity_commands = commands.spawn((
         Monster,
         spawn_def.kind,
         MonsterState::Staging,
@@ -139,6 +140,7 @@ fn spawn_monster(
         CollisionBox::new(Vec2::splat(monster_size)),
         CollisionState::new(),
         WaitMeter::new(def.wait_threshold),
+        def.special_behavior.clone(),  // SpecialBehaviorコンポーネントを追加
         Sprite {
             color: Color::srgb(def.color.0, def.color.1, def.color.2),
             custom_size: Some(Vec2::splat(monster_size)),
@@ -146,6 +148,11 @@ fn spawn_monster(
         },
         Transform::from_translation(position),
     ));
+
+    // MyPace挙動の場合は、MyPaceTimerコンポーネントを追加
+    if let SpecialBehavior::MyPace { stop_interval, stop_duration } = def.special_behavior {
+        entity_commands.insert(MyPaceTimer::new(stop_interval, stop_duration));
+    }
 
     info!(
         "Spawned {:?} at {:?} (grid: {}) facing {:?}",

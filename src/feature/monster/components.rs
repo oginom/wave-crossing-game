@@ -45,11 +45,17 @@ impl MonsterProperty {
 pub struct Movement {
     pub direction: Direction,
     pub speed: f32,
+    /// 移動が有効かどうか（特殊挙動で一時停止する場合に使用）
+    pub enabled: bool,
 }
 
 impl Movement {
     pub fn new(direction: Direction, speed: f32) -> Self {
-        Self { direction, speed }
+        Self {
+            direction,
+            speed,
+            enabled: true,
+        }
     }
 }
 

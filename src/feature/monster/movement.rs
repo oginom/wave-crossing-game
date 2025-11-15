@@ -8,8 +8,8 @@ pub fn monster_movement_system(
     mut query: Query<(&Movement, &mut Transform, &mut MonsterState, &CollisionState), With<Monster>>,
 ) {
     for (movement, mut transform, mut state, collision) in &mut query {
-        // Moving状態で、かつ衝突していない場合のみ移動
-        if *state == MonsterState::Moving && !collision.is_colliding {
+        // Moving状態で、かつ衝突していない場合、かつ移動が有効な場合のみ移動
+        if *state == MonsterState::Moving && !collision.is_colliding && movement.enabled {
             // 進行方向に移動
             let velocity = movement.direction.to_vector() * movement.speed;
             transform.translation += velocity.extend(0.0) * time.delta_secs();

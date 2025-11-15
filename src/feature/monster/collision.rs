@@ -1,22 +1,29 @@
 use bevy::prelude::*;
 use super::components::*;
+use super::special_behavior::SpecialBehavior;
 use crate::core::GRID_SIZE;
 
 /// 衝突検知システム
 /// 次フレームの予測位置と現在の他モンスターの位置で矩形衝突判定を行う
 pub fn collision_detection_system(
-    mut query: Query<(Entity, &Transform, &Movement, &CollisionBox, &mut CollisionState, &MonsterState), With<Monster>>,
+    mut query: Query<(Entity, &Transform, &Movement, &CollisionBox, &mut CollisionState, &MonsterState, Option<&SpecialBehavior>), With<Monster>>,
 ) {
-    // 全モンスターの位置情報を事前に収集
+    // 全モンスターの位置情報を事前に収集（Cloneして所有権を持つ）
     let monsters: Vec<_> = query
         .iter()
-        .map(|(e, t, _, cb, _, s)| (e, t.translation, cb.size, *s))
+        .map(|(e, t, _, cb, _, s, sb)| (e, t.translation, cb.size, *s, sb.cloned()))
         .collect();
 
     // 各モンスターについて衝突判定
-    for (entity, transform, movement, collision_box, mut collision_state, state) in &mut query {
+    for (entity, transform, movement, collision_box, mut collision_state, state, special_behavior) in &mut query {
         // Moving状態のモンスターのみ衝突判定を行う
         if *state != MonsterState::Moving {
+            collision_state.is_colliding = false;
+            continue;
+        }
+
+        // PassThrough挙動を持つモンスターは衝突判定をスキップ
+        if matches!(special_behavior, Some(SpecialBehavior::PassThrough)) {
             collision_state.is_colliding = false;
             continue;
         }
@@ -29,7 +36,7 @@ pub fn collision_detection_system(
         collision_state.is_colliding = false;
 
         // 他のモンスターとの衝突をチェック
-        for (other_entity, other_pos, other_size, other_state) in &monsters {
+        for (other_entity, other_pos, other_size, other_state, other_special_behavior) in &monsters {
             // 自分自身はスキップ
             if entity == *other_entity {
                 continue;
@@ -37,6 +44,11 @@ pub fn collision_detection_system(
 
             // 相手もMoving状態でない場合はスキップ
             if *other_state != MonsterState::Moving {
+                continue;
+            }
+
+            // 相手がPassThrough挙動を持つ場合は衝突判定をスキップ
+            if matches!(other_special_behavior.as_ref(), Some(SpecialBehavior::PassThrough)) {
                 continue;
             }
 
