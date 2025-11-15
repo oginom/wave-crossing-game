@@ -17,6 +17,9 @@ build-wasm:
       --out-name wave_crossing_game \
       --target web \
       ./target/wasm32-unknown-unknown/wasm-release/wave_crossing_game.wasm
+    @echo "Copying assets..."
+    @rm -rf ./wasm/assets
+    @cp -r ./assets ./wasm/assets
 
 # Build for WebGL/WASM (debug, faster build)
 build-wasm-dev:
@@ -25,6 +28,9 @@ build-wasm-dev:
       --out-name wave_crossing_game \
       --target web \
       ./target/wasm32-unknown-unknown/debug/wave_crossing_game.wasm
+    @echo "Copying assets..."
+    @rm -rf ./wasm/assets
+    @cp -r ./assets ./wasm/assets
 
 # Build and serve WASM build locally
 serve-wasm: build-wasm

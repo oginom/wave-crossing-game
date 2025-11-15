@@ -1,10 +1,17 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::core::{Direction, GRID_SIZE, FIELD_WIDTH, FIELD_HEIGHT, grid_to_world, GridPosition};
+use crate::core::{Direction, GRID_SIZE, FIELD_WIDTH, FIELD_HEIGHT, grid_to_world, GridPosition, StageLevelAsset};
 use crate::core::level;
 use super::components::*;
 use super::definitions::{MonsterDefinitions, MonsterKind};
 use super::special_behavior::{SpecialBehavior, MyPaceTimer};
+
+/// ステージレベルのロード状態を管理するリソース
+#[derive(Resource)]
+pub struct StageLevelLoader {
+    pub handle: Handle<StageLevelAsset>,
+    pub loaded: bool,
+}
 
 /// モンスターのスポーン定義
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,31 +41,6 @@ pub struct StageLevel {
     pub waves: Vec<WaveDefinition>,
 }
 
-/// ステージレベルファイルの構造
-#[derive(Deserialize)]
-struct StageLevelFile {
-    stage: u32,
-    level: u32,
-    waves: Vec<WaveDefinition>,
-}
-
-impl StageLevel {
-    /// RONファイルからステージレベル定義を読み込む
-    pub fn from_file(path: &str) -> Self {
-        let content = std::fs::read_to_string(path)
-            .unwrap_or_else(|e| panic!("Failed to read stage level file '{}': {}", path, e));
-
-        let file: StageLevelFile = ron::from_str(&content)
-            .unwrap_or_else(|e| panic!("Failed to parse stage level file '{}': {}", path, e));
-
-        Self {
-            stage: file.stage,
-            level: file.level,
-            waves: file.waves,
-        }
-    }
-}
-
 /// モンスターのスポーンキュー（リソース）
 #[derive(Resource)]
 pub struct MonsterSpawnQueue {
@@ -68,20 +50,46 @@ pub struct MonsterSpawnQueue {
     pub processed_wave_indices: Vec<usize>,  // 処理済みWaveのインデックス
 }
 
-impl Default for MonsterSpawnQueue {
-    fn default() -> Self {
-        // RONファイルからWave定義を読み込む
-        let stage_level = StageLevel::from_file("assets/stages/stage1_level1.ron");
-
+impl MonsterSpawnQueue {
+    pub fn new(waves: Vec<WaveDefinition>) -> Self {
         Self {
             spawns: Vec::new(),
-            waves: stage_level.waves,
+            waves,
             timer: 0.0,
             processed_wave_indices: Vec::new(),
         }
     }
 }
 
+
+/// ステージレベルアセットをロードするシステム（起動時に一度だけ実行）
+pub fn load_stage_level_system(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let handle: Handle<StageLevelAsset> = asset_server.load("stages/stage1_level1.ron");
+    commands.insert_resource(StageLevelLoader {
+        handle,
+        loaded: false,
+    });
+}
+
+/// ステージレベルが読み込まれたらMonsterSpawnQueueを初期化するシステム
+pub fn initialize_spawn_queue_system(
+    mut commands: Commands,
+    mut loader: ResMut<StageLevelLoader>,
+    stage_assets: Res<Assets<StageLevelAsset>>,
+) {
+    // すでにロード済みならスキップ
+    if loader.loaded {
+        return;
+    }
+
+    // アセットがロードされたか確認
+    if let Some(stage_asset) = stage_assets.get(&loader.handle) {
+        let stage_level = stage_asset.to_stage_level();
+        commands.insert_resource(MonsterSpawnQueue::new(stage_level.waves));
+        loader.loaded = true;
+        info!("Stage level loaded: Stage {}, Level {}", stage_level.stage, stage_level.level);
+    }
+}
 
 /// 画面端の待機位置を取得
 fn get_staging_position(direction: Direction, grid_pos: i32) -> Vec3 {
@@ -121,10 +129,14 @@ fn get_staging_position(direction: Direction, grid_pos: i32) -> Vec3 {
 pub fn spawn_monsters_system(
     mut commands: Commands,
     time: Res<Time>,
-    mut spawn_queue: ResMut<MonsterSpawnQueue>,
+    spawn_queue: Option<ResMut<MonsterSpawnQueue>>,
     monster_defs: Res<MonsterDefinitions>,
     asset_server: Res<AssetServer>,
 ) {
+    // MonsterSpawnQueueが初期化されるまで待機
+    let Some(mut spawn_queue) = spawn_queue else {
+        return;
+    };
     spawn_queue.timer += time.delta_secs();
 
     // Wave開始時間を確認して、新しいWaveのモンスターをスポーンキューに追加

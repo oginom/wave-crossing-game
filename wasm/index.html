@@ -38,6 +38,14 @@
     <script type="module">
         import init from './wave_crossing_game.js';
 
+        // Set up panic hook for better error messages
+        window.addEventListener('unhandledrejection', event => {
+            console.error('Unhandled rejection:', event.reason);
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').textContent = 'Error: ' + event.reason;
+        });
+
         async function run() {
             try {
                 await init();
@@ -46,7 +54,10 @@
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error').style.display = 'block';
                 document.getElementById('error').textContent = 'Error loading game: ' + e;
-                console.error(e);
+                console.error('Full error:', e);
+                if (e.stack) {
+                    console.error('Stack trace:', e.stack);
+                }
             }
         }
 

@@ -4,8 +4,10 @@
 # WASM build output
 /wasm/*.wasm
 /wasm/*.js
+/wasm/*.d.ts
 /wasm/snippets/
 /wasm/.gitignore
+/wasm/assets/
 
 # OS
 .DS_Store
