@@ -389,56 +389,95 @@ fn setup_monster_definitions(mut definitions: ResMut<MonsterDefinitions>) {
 **ファイル**: `src/feature/monster/special_behavior.rs` (新規)
 
 ```rust
+use bevy::prelude::*;
+
+/// モンスターの特殊挙動を定義するコンポーネント
 #[derive(Component, Clone, Debug, PartialEq)]
 pub enum SpecialBehavior {
+    /// 特殊挙動なし（標準的な挙動のみ）
     None,
-    SpeedBoost {
-        multiplier: f32,
-        activation_distance: f32,  // ゴールまでの距離
-    },
-    Teleport {
-        interval: f32,
-        distance: f32,
-    },
-    Split {
-        count: usize,
-        trigger_on_collision: bool,
+
+    /// すり抜け: 他のモンスターと相互衝突せずにすれ違う
+    PassThrough,
+
+    /// マイペース: 時々一定時間立ち止まる
+    MyPace {
+        stop_interval: f32,  // 立ち止まる間隔（秒）
+        stop_duration: f32,  // 立ち止まる時間（秒）
     },
 }
 
-fn apply_special_behavior_system(
-    mut query: Query<(&MonsterKind, &mut Movement, &Transform, &SpecialBehavior)>,
-    monster_defs: Res<MonsterDefinitions>,
-    time: Res<Time>,
+/// マイペース挙動用のタイマーコンポーネント
+#[derive(Component)]
+pub struct MyPaceTimer {
+    pub interval_timer: Timer,
+    pub stop_timer: Timer,
+    pub is_stopped: bool,
+}
+
+impl MyPaceTimer {
+    pub fn new(interval: f32, duration: f32) -> Self {
+        Self {
+            interval_timer: Timer::from_seconds(interval, TimerMode::Repeating),
+            stop_timer: Timer::from_seconds(duration, TimerMode::Once),
+            is_stopped: false,
+        }
+    }
+}
+
+/// すり抜け挙動の処理システム
+///
+/// PassThroughを持つモンスターは、他のモンスターとの衝突判定をスキップする
+/// （実装は collision.rs の collision_detection_system で行う）
+pub fn pass_through_system(
+    // PassThrough挙動を持つモンスターには特別なマーカーコンポーネントを付与するだけ
+    // 実際の衝突スキップ処理は collision_detection_system 側で実装
 ) {
-    for (kind, mut movement, transform, behavior) in &mut query {
-        match behavior {
-            SpecialBehavior::None => {},
-            SpecialBehavior::SpeedBoost { multiplier, activation_distance } => {
-                // ゴールまでの距離を計算し、閾値を下回ったら加速
-                // TODO: ゴール位置の取得方法
-            },
-            SpecialBehavior::Teleport { interval, distance } => {
-                // 一定間隔でテレポート
-                // TODO: タイマー管理
-            },
-            SpecialBehavior::Split { count, trigger_on_collision } => {
-                // 衝突時に分裂
-                // TODO: 新しいモンスターのスポーン
-            },
+    // このシステム自体は何もしない（マーカーとしてのみ使用）
+}
+
+/// マイペース挙動の処理システム
+pub fn my_pace_system(
+    time: Res<Time>,
+    mut query: Query<(&SpecialBehavior, &mut MyPaceTimer, &mut Movement)>,
+) {
+    for (behavior, mut timer, mut movement) in &mut query {
+        if let SpecialBehavior::MyPace { .. } = behavior {
+            if timer.is_stopped {
+                // 立ち止まり中
+                timer.stop_timer.tick(time.delta());
+                if timer.stop_timer.finished() {
+                    // 立ち止まり終了、移動再開
+                    timer.is_stopped = false;
+                    movement.enabled = true;
+                }
+            } else {
+                // 通常移動中
+                timer.interval_timer.tick(time.delta());
+                if timer.interval_timer.finished() {
+                    // 立ち止まり開始
+                    timer.is_stopped = true;
+                    timer.stop_timer.reset();
+                    movement.enabled = false;
+                }
+            }
         }
     }
 }
 ```
 
-**TODO**:
-- [ ] 特殊挙動を何種類実装するか決定（最初は3種類程度？）
-- [ ] 各挙動の具体的なゲームデザインを詰める
-  - SpeedBoost: どのタイミングで発動？加速率は？
-  - Teleport: テレポート先はランダム？固定方向？
-  - Split: 分裂後のモンスターの種類は？
-- [ ] `SpecialBehavior` を `MonsterDefinition` に含めるか、別コンポーネントにするか
-  - **提案**: 別コンポーネント（動的に変更可能にするため）
+**決定事項**:
+- ✅ 特殊挙動は2種類を実装
+  - **PassThrough（すり抜け）**: 他のモンスターと相互衝突せずにすれ違う
+  - **MyPace（マイペース）**: 時々一定時間立ち止まる
+- ✅ `SpecialBehavior` は別コンポーネントとして実装（動的に変更可能）
+- ✅ 各挙動の具体的な仕様
+  - PassThrough: 衝突判定システムでスキップ処理を行う
+  - MyPace: インターバルと停止時間をパラメータ化、タイマーで制御
+
+**実装時の注意事項**:
+- PassThrough: `collision_detection_system` でクエリフィルタを使用して判定
+- MyPace: `Movement` コンポーネントに `enabled` フィールドが必要（追加予定）
 
 #### 3.2 個別モンスター挙動の分離
 
@@ -463,10 +502,10 @@ pub fn kappa_behavior_system(
 }
 ```
 
-**TODO**:
-- [ ] 個別挙動が必要なモンスターをリストアップ
-- [ ] `types/` ディレクトリを作るタイミング（Phase 3で必須か？Phase 4以降でもよいか？）
-- [ ] 個別挙動システムの登録方法（MonsterPluginで全て登録？動的登録？）
+**決定事項**:
+- ✅ 個別挙動は Phase 3 では実装しない（Phase 4 以降に延期）
+- ✅ `types/` ディレクトリは必要なタイミングで作成（現時点では不要）
+- ✅ 個別挙動システムの登録方法: MonsterPlugin で登録
 
 ---
 
@@ -560,14 +599,12 @@ serde_ron = "0.8"  # RONファイル読み込み用
 
 ### 特殊挙動の実装順序
 
-**優先度**:
-1. **High**: `SpecialBehavior::None` - 基本実装（Phase 1で対応）
-2. **Medium**: `SpeedBoost` - 実装が比較的シンプル
-3. **Low**: `Teleport`, `Split` - 複雑な処理が必要
-
-**TODO**:
-- [ ] Phase 3で実装する挙動を1〜2種類に絞る
-- [ ] 残りはPhase 4以降に延期
+**決定事項**:
+- ✅ Phase 3で実装する挙動
+  1. `SpecialBehavior::None` - 特殊挙動なし（デフォルト）
+  2. `SpecialBehavior::PassThrough` - すり抜け（他のモンスターと衝突しない）
+  3. `SpecialBehavior::MyPace` - マイペース（時々立ち止まる）
+- ✅ 他の特殊挙動（SpeedBoost、Teleport、Splitなど）は Phase 4 以降に延期
 
 ### テスト戦略
 
