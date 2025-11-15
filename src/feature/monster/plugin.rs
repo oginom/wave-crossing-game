@@ -37,32 +37,9 @@ impl Plugin for MonsterPlugin {
     }
 }
 
-/// モンスター定義を初期化（Phase 1: ハードコード）
+/// モンスター定義を初期化（Phase 2: RONファイルから読み込み）
 fn setup_monster_definitions(mut definitions: ResMut<MonsterDefinitions>) {
-    // 河童 - 標準的な速度と挙動
-    definitions.insert(MonsterDefinition {
-        kind: MonsterKind::Kappa,
-        speed: 100.0,
-        size: 0.6,
-        color: (0.2, 0.8, 0.5),  // 緑色
-        wait_threshold: 10.0,
-    });
-
-    // ゴースト - 高速移動
-    definitions.insert(MonsterDefinition {
-        kind: MonsterKind::Ghost,
-        speed: 150.0,
-        size: 0.5,
-        color: (0.9, 0.9, 1.0),  // 白っぽい
-        wait_threshold: 8.0,
-    });
-
-    // 化け猫 - 大型でゆっくり
-    definitions.insert(MonsterDefinition {
-        kind: MonsterKind::Bakeneko,
-        speed: 70.0,
-        size: 0.8,
-        color: (0.3, 0.2, 0.4),  // 紫がかった色
-        wait_threshold: 15.0,
-    });
+    // RONファイルから定義を読み込む
+    let loaded = MonsterDefinitions::from_file("assets/monsters.ron");
+    *definitions = loaded;
 }

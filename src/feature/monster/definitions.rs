@@ -20,6 +20,12 @@ pub struct MonsterDefinition {
     pub wait_threshold: f32,
 }
 
+/// RONファイルの構造
+#[derive(Deserialize)]
+struct MonsterDefinitionsFile {
+    definitions: Vec<MonsterDefinition>,
+}
+
 /// モンスター定義を管理するリソース
 #[derive(Resource, Default)]
 pub struct MonsterDefinitions {
@@ -27,6 +33,24 @@ pub struct MonsterDefinitions {
 }
 
 impl MonsterDefinitions {
+    /// RONファイルからモンスター定義を読み込む
+    ///
+    /// ファイルが存在しない、または形式が不正な場合はパニックする
+    pub fn from_file(path: &str) -> Self {
+        let content = std::fs::read_to_string(path)
+            .unwrap_or_else(|e| panic!("Failed to read monster definitions file '{}': {}", path, e));
+
+        let file: MonsterDefinitionsFile = ron::from_str(&content)
+            .unwrap_or_else(|e| panic!("Failed to parse monster definitions file '{}': {}", path, e));
+
+        let mut definitions = HashMap::new();
+        for def in file.definitions {
+            definitions.insert(def.kind, def);
+        }
+
+        Self { definitions }
+    }
+
     /// 指定された種類のモンスター定義を取得
     pub fn get(&self, kind: MonsterKind) -> &MonsterDefinition {
         self.definitions
