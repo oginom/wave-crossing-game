@@ -1,5 +1,11 @@
 # Rust
 /target
 
+# WASM build output
+/wasm/*.wasm
+/wasm/*.js
+/wasm/snippets/
+/wasm/.gitignore
+
 # OS
 .DS_Store

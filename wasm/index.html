@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wave Crossing Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+            background-color: #000;
+            max-width: 100%;
+            max-height: 100vh;
+        }
+        #loading {
+            color: white;
+            text-align: center;
+        }
+        #error {
+            color: #ff4444;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading Wave Crossing Game...</div>
+    <div id="error"></div>
+    <script type="module">
+        import init from './wave_crossing_game.js';
+
+        async function run() {
+            try {
+                await init();
+                document.getElementById('loading').style.display = 'none';
+            } catch (e) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'Error loading game: ' + e;
+                console.error(e);
+            }
+        }
+
+        run();
+    </script>
+</body>
+</html>
