@@ -9,21 +9,35 @@
                 // 河童: 正面衝突テスト
                 (kind: Kappa, direction: Right, grid_pos: 5, delay: 0.0),
                 (kind: Kappa, direction: Left, grid_pos: 5, delay: 0.0),
+                (kind: Kappa, direction: Right, grid_pos: 3, delay: 1.0),
+                (kind: Kappa, direction: Left, grid_pos: 3, delay: 1.0),
+                (kind: Kappa, direction: Right, grid_pos: 6, delay: 2.0),
+                (kind: Kappa, direction: Left, grid_pos: 6, delay: 2.0),
                 // ゴースト: すり抜けテスト
-                (kind: Ghost, direction: Down, grid_pos: 3, delay: 1.0),
+                (kind: Ghost, direction: Down, grid_pos: 3, delay: 1.5),
+                (kind: Ghost, direction: Up, grid_pos: 7, delay: 2.5),
+                (kind: Ghost, direction: Down, grid_pos: 5, delay: 3.5),
             ],
         ),
-        // Wave 2: 5秒後
+        // Wave 2: 12秒後
         (
-            start_time: 5.0,
+            start_time: 12.0,
             monsters: [
                 // 化け猫: マイペース挙動テスト
                 (kind: Bakeneko, direction: Up, grid_pos: 7, delay: 0.0),
                 (kind: Bakeneko, direction: Down, grid_pos: 7, delay: 0.0),
+                (kind: Bakeneko, direction: Up, grid_pos: 3, delay: 0.5),
+                (kind: Bakeneko, direction: Down, grid_pos: 9, delay: 0.5),
+                (kind: Bakeneko, direction: Up, grid_pos: 5, delay: 1.0),
+                (kind: Bakeneko, direction: Down, grid_pos: 4, delay: 1.0),
                 // ゴースト: 追加のすり抜けテスト
                 (kind: Ghost, direction: Right, grid_pos: 3, delay: 1.5),
+                (kind: Ghost, direction: Left, grid_pos: 8, delay: 2.0),
+                (kind: Ghost, direction: Right, grid_pos: 6, delay: 2.5),
                 // 河童: 追加の通常挙動
-                (kind: Kappa, direction: Left, grid_pos: 9, delay: 2.0),
+                (kind: Kappa, direction: Left, grid_pos: 9, delay: 3.0),
+                (kind: Kappa, direction: Right, grid_pos: 2, delay: 3.5),
+                (kind: Kappa, direction: Left, grid_pos: 8, delay: 4.0),
             ],
         ),
     ]
