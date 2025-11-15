@@ -43,19 +43,16 @@ pub fn update_wait_meter_system(
 /// wait値に応じてモンスターの色を変化させる
 ///
 /// 待機時間が進むほど黒くなる（最大で30%の明るさまで落ちる）
+/// テクスチャ使用時は白から暗くする（乗算で実現）
 pub fn update_monster_color_system(
-    mut query: Query<(&WaitMeter, &super::components::MonsterProperty, &mut Sprite), With<Monster>>,
+    mut query: Query<(&WaitMeter, &mut Sprite), With<Monster>>,
 ) {
-    for (wait_meter, property, mut sprite) in query.iter_mut() {
+    for (wait_meter, mut sprite) in query.iter_mut() {
         let ratio = wait_meter.progress_ratio();
 
-        // 待機時間が進むほど黒くなる（元の色から明るさを減少）
+        // 待機時間が進むほど黒くなる（白から明るさを減少）
         let brightness = 1.0 - (ratio * 0.7); // 最大で30%の明るさまで落ちる
-        sprite.color = Color::srgb(
-            property.base_color.0 * brightness,
-            property.base_color.1 * brightness,
-            property.base_color.2 * brightness,
-        );
+        sprite.color = Color::srgb(brightness, brightness, brightness);
     }
 }
 

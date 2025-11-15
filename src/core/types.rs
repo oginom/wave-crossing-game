@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// グリッド座標
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -14,7 +15,7 @@ impl GridPosition {
 }
 
 /// モンスターの進行方向
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Direction {
     Up,
     Down,

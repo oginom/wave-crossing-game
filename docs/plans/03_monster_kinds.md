@@ -509,61 +509,80 @@ pub fn kappa_behavior_system(
 
 ---
 
-### Phase 4: スケールアップと最適化
+### Phase 4: テクスチャとWave定義の導入
 
-#### 4.1 モンスター種類の大量追加
+#### 4.1 テクスチャ/スプライトの導入
 
-**目標**: 30種類以上のモンスターを定義
+**目標**: モンスターの見た目を色からスプライト画像に変更
 
-**作業内容**:
-1. `MonsterKind` に30個のバリアントを追加
-2. `assets/monsters.ron` に30個の定義を記述
-3. 各モンスターのゲームバランスを調整
+**ファイル配置**:
+- `assets/img/kappa.png` - 河童のスプライト
+- `assets/img/ghost.png` - ゴーストのスプライト
+- `assets/img/bakeneko.png` - 化け猫のスプライト
 
-**TODO**:
-- [ ] 30種類のモンスターのコンセプトリストを作成
-- [ ] 挙動のバリエーション（速度、サイズ、特殊能力）をどう差別化するか
-- [ ] テクスチャ/スプライトの導入（現在は色だけ）
+**実装内容**:
+1. `MonsterDefinition` に `texture_path: String` フィールドを追加
+2. `monsters.ron` でテクスチャパスを指定
+3. スポーンシステムでテクスチャを読み込み、`Sprite` に設定
+4. 既存の `color` フィールドは削除（またはデバッグ用に残す）
+
+**決定事項**:
+- ✅ 画像ファイルは `assets/img/` 以下に配置
+- ✅ ファイル名はモンスター種類に対応（kappa.png、ghost.png、bakeneko.png）
+- ✅ 動作確認時にPNGファイルを配置する
 
 #### 4.2 Wave定義のデータ駆動化
 
-**ファイル**: `assets/waves.ron` (新規)
+**目標**: ステージ1・レベル1で2つのWaveを実装
+
+**ファイル**: `assets/stages/stage1_level1.ron` (新規)
 
 ```ron
 (
+    stage: 1,
+    level: 1,
     waves: [
         (
+            start_time: 0.0,  // ゲーム開始から0秒後
             monsters: [
                 (kind: Kappa, direction: Right, grid_pos: 5, delay: 0.0),
                 (kind: Kappa, direction: Left, grid_pos: 5, delay: 0.0),
+                (kind: Ghost, direction: Down, grid_pos: 3, delay: 1.0),
             ],
         ),
         (
+            start_time: 5.0,  // ゲーム開始から5秒後
             monsters: [
-                (kind: Ghost, direction: Down, grid_pos: 3, delay: 0.0),
-                (kind: Bakeneko, direction: Up, grid_pos: 7, delay: 1.0),
+                (kind: Bakeneko, direction: Up, grid_pos: 7, delay: 0.0),
+                (kind: Bakeneko, direction: Down, grid_pos: 7, delay: 0.0),
+                (kind: Ghost, direction: Right, grid_pos: 3, delay: 1.5),
+                (kind: Kappa, direction: Left, grid_pos: 9, delay: 2.0),
             ],
         ),
     ]
 )
 ```
 
-**TODO**:
-- [ ] Wave定義のスキーマ設計
-- [ ] 現在の `create_spawn_definitions()` をRONファイル読み込みに置き換え
-- [ ] ステージ/レベル概念の導入（複数のWaveファイル？）
+**実装内容**:
+1. Wave定義用の構造体を作成（`WaveDefinition`、`StageLevel`）
+2. `assets/stages/` ディレクトリを作成
+3. `stage1_level1.ron` を作成
+4. `create_spawn_definitions()` をRONファイル読み込みに置き換え
+5. Wave開始時間（`start_time`）に基づいてモンスターをスポーン
 
-#### 4.3 パフォーマンス最適化
+**決定事項**:
+- ✅ まずはステージ1・レベル1のみ実装
+- ✅ Waveは2つ
+- ✅ Wave定義には発生時間（`start_time`）を追加
+- ✅ 各Waveのモンスター定義には個別の遅延時間（`delay`）も保持
 
-**検討事項**:
-- オブジェクトプール（dev_guide 9.2参照）
-- 空間分割（100体以上の同時表示時）
-- システム並列化（現在は`.chain()`で直列実行）
+#### 4.3 今後の拡張（99_inbox.mdに移動）
 
-**TODO**:
-- [ ] パフォーマンス測定基準の設定（目標FPS、最大モンスター数）
-- [ ] プロファイリング実施（`bevy_diagnostic`の活用）
-- [ ] 最適化の優先順位付け
+以下の項目は将来の拡張として `docs/plans/99_inbox.md` に移動しました：
+
+- 30種類のモンスター追加
+- パフォーマンス測定・プロファイリング
+- 最適化（オブジェクトプール、空間分割、並列化）
 
 ---
 

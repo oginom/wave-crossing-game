@@ -17,9 +17,10 @@ pub struct MonsterDefinition {
     pub kind: MonsterKind,
     pub speed: f32,
     pub size: f32,
-    pub color: (f32, f32, f32),
+    pub color: (f32, f32, f32),  // デバッグ用（テクスチャがない場合のフォールバック）
     pub wait_threshold: f32,
     pub special_behavior: SpecialBehavior,
+    pub texture_path: String,  // テクスチャファイルのパス
 }
 
 /// RONファイルの構造

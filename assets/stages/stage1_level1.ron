@@ -1,0 +1,30 @@
+(
+    stage: 1,
+    level: 1,
+    waves: [
+        // Wave 1: ゲーム開始直後
+        (
+            start_time: 0.0,
+            monsters: [
+                // 河童: 正面衝突テスト
+                (kind: Kappa, direction: Right, grid_pos: 5, delay: 0.0),
+                (kind: Kappa, direction: Left, grid_pos: 5, delay: 0.0),
+                // ゴースト: すり抜けテスト
+                (kind: Ghost, direction: Down, grid_pos: 3, delay: 1.0),
+            ],
+        ),
+        // Wave 2: 5秒後
+        (
+            start_time: 5.0,
+            monsters: [
+                // 化け猫: マイペース挙動テスト
+                (kind: Bakeneko, direction: Up, grid_pos: 7, delay: 0.0),
+                (kind: Bakeneko, direction: Down, grid_pos: 7, delay: 0.0),
+                // ゴースト: 追加のすり抜けテスト
+                (kind: Ghost, direction: Right, grid_pos: 3, delay: 1.5),
+                // 河童: 追加の通常挙動
+                (kind: Kappa, direction: Left, grid_pos: 9, delay: 2.0),
+            ],
+        ),
+    ]
+)
