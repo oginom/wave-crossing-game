@@ -329,14 +329,14 @@ fn spawn_monsters_system(
 )
 ```
 
-**TODO**:
-- [ ] RONファイルのスキーマを決定（上記は暫定案）
-- [ ] `assets/` ディレクトリを作成
-- [ ] RONファイルのバリデーション方法を検討（起動時にエラーチェック）
+**決定事項**:
+- ✅ RONファイルのスキーマは暫定案の通りで確定
+- ✅ `assets/` ディレクトリは作成済み
+- ✅ バリデーション処理は不要（エラー時はパニックで終了）
 
 #### 2.2 RONファイル読み込みシステム
 
-**ファイル**: `src/core/monster_definitions.rs` (追加)
+**ファイル**: `src/feature/monster/definitions.rs` (既存ファイルに追加)
 
 ```rust
 #[derive(Deserialize)]
@@ -344,29 +344,41 @@ struct MonsterDefinitionsFile {
     definitions: Vec<MonsterDefinition>,
 }
 
-fn load_monster_definitions(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-) {
-    // Bevy 0.17のアセット読み込み方法を調査する必要あり
-    let handle: Handle<MonsterDefinitionsFile> = asset_server.load("monsters.ron");
-    commands.insert_resource(handle);
-}
+impl MonsterDefinitions {
+    /// RONファイルからモンスター定義を読み込む
+    /// ファイルが存在しない、または形式が不正な場合はパニックする
+    pub fn from_file(path: &str) -> Self {
+        let content = std::fs::read_to_string(path)
+            .unwrap_or_else(|e| panic!("Failed to read monster definitions file '{}': {}", path, e));
 
-fn setup_monster_definitions(
-    mut definitions: ResMut<MonsterDefinitions>,
-    // TODO: RONファイルのロード完了を待つ方法
-) {
-    // MonsterDefinitionsリソースに登録
+        let file: MonsterDefinitionsFile = ron::from_str(&content)
+            .unwrap_or_else(|e| panic!("Failed to parse monster definitions file '{}': {}", path, e));
+
+        let mut definitions = HashMap::new();
+        for def in file.definitions {
+            definitions.insert(def.kind, def);
+        }
+
+        Self { definitions }
+    }
 }
 ```
 
-**TODO**:
-- [ ] Bevy 0.17でのRONファイル読み込み方法を調査
-  - `AssetLoader` トレイトのカスタム実装が必要か？
-  - 既存の `serde_ron` でシンプルに読み込めるか？
-- [ ] アセットロード完了の待機方法を決定（`OnEnter(GameState::Loading)` を使う？）
-- [ ] ロード失敗時のフォールバック処理
+**plugin.rs の変更**:
+
+```rust
+fn setup_monster_definitions(mut definitions: ResMut<MonsterDefinitions>) {
+    // Phase 2: RONファイルから定義を読み込む
+    let loaded = MonsterDefinitions::from_file("assets/monsters.ron");
+    *definitions = loaded;
+}
+```
+
+**決定事項**:
+- ✅ `std::fs::read_to_string()` を使用してシンプルに読み込む
+- ✅ `serde_ron::from_str()` でパースする
+- ✅ ロード失敗時は `panic!()` でアプリを終了する
+- ✅ Bevyのアセットシステムは使用しない（起動時の同期読み込みで十分）
 
 ---
 
@@ -528,27 +540,23 @@ serde = { version = "1.0", features = ["derive"] }
 serde_ron = "0.8"  # RONファイル読み込み用
 ```
 
-**TODO**:
-- [ ] `serde` のバージョンをBevy 0.17と互換性のあるものに確認
-- [ ] `serde_ron` の最新版を調査
+**決定事項**:
+- ✅ `serde = { version = "1.0", features = ["derive"] }` を使用（Bevy 0.17と互換性あり）
+- ✅ `ron = "0.8"` を使用（最新の安定版）
 
 ### Bevy 0.17でのアセット読み込み
 
-**調査項目**:
-- [ ] Bevy 0.17のアセットシステムの仕様確認
-- [ ] RONファイルをカスタムアセットとして読み込む方法
-- [ ] `AssetLoader` トレイトの実装が必要か？
-- [ ] シンプルな方法：起動時に `std::fs::read_to_string()` で直接読む？（推奨されるか？）
+**決定事項**:
+- ✅ Bevyのアセットシステムは使用せず、`std::fs::read_to_string()` で直接読み込む
+- ✅ `AssetLoader` トレイトの実装は不要
+- ✅ 起動時に同期読み込みで十分（ゲームプレイに影響なし）
+- ✅ エラーハンドリングは `panic!()` でアプリ終了
 
 ### MonsterKindの配置場所
 
-**選択肢**:
-1. `core/monster_definitions.rs` - 他のfeatureから参照しやすい
-2. `feature/monster/definitions.rs` - monster機能内に閉じる
-
-**TODO**:
-- [ ] 他のfeature（例：UI）から `MonsterKind` を参照する必要があるか検討
-- [ ] 配置場所を決定
+**決定事項**:
+- ✅ `feature/monster/definitions.rs` に配置（monster機能内に閉じる）
+- ✅ 他のfeatureからの参照が必要になった場合は、イベント経由で情報を渡す設計を採用
 
 ### 特殊挙動の実装順序
 
