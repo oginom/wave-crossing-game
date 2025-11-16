@@ -151,9 +151,10 @@ pub enum GameState {
 **Bevy 0.17以降の変更点**:
 - `EventWriter`/`EventReader` は `MessageWriter`/`MessageReader` に変更
 - イベントの登録は `.add_message::<EventType>()` を使用
+- イベント定義は `#[derive(Message)]` を使用
 
 ```rust
-#[derive(Event)]
+#[derive(Message)]
 pub struct MonsterDespawnEvent {
     pub entity: Entity,
     pub cause: DespawnCause,
@@ -199,35 +200,31 @@ fn handle_despawn_system(
 #[derive(Component)]
 pub struct Monster;
 
-#[derive(Component, Clone, Copy, Debug)]
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MonsterKind {
-    Slime,
-    Goblin,
-    Shooter,
-    Tank,
-    BossSlug,
-}
-
-#[derive(Component)]
-pub struct Health {
-    pub current: f32,
-    pub max: f32,
+    Kappa,      // 河童 - 標準的な速度と挙動
+    Ghost,      // ゴースト - 高速移動、すり抜け特性
+    Bakeneko,   // 化け猫 - 大型でゆっくり、マイペース挙動
 }
 ```
 
+**現在の実装**: 本プロジェクトでは体力（Health）システムは未実装。
+モンスターは待機時間（WaitMeter）が閾値を超えると消滅する仕組みを採用。
+
 ### 4.2 コンフィグ駆動設計
 
-敵定義は `MonsterConfig` に集約し、RON/JSON で外部化可能。
+敵定義は `MonsterDefinition` に集約し、RONファイルで外部化。
 
 ```rust
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MonsterDefinition {
     pub kind: MonsterKind,
-    pub hp: f32,
     pub speed: f32,
-    pub attack_damage: f32,
-    pub texture_path: &'static str,
-    pub ai_pattern: AiPattern,
+    pub size: f32,
+    pub color: (f32, f32, f32),  // デバッグ用（テクスチャがない場合のフォールバック）
+    pub wait_threshold: f32,
+    pub special_behavior: SpecialBehavior,
+    pub texture_path: String,  // テクスチャファイルのパス
 }
 ```
 
@@ -236,18 +233,36 @@ pub struct MonsterDefinition {
 
 ---
 
-### 4.3 AIと個別挙動
+### 4.3 特殊挙動システム
 
-* 共通AIは `ai.rs` にまとめる。
-* 特殊挙動は `monster/types/` に分離する。
+本ゲームでは複雑なAI状態機械ではなく、**特殊挙動（SpecialBehavior）** による拡張方式を採用。
 
 ```rust
-match (def.ai_pattern, ai.state) {
-    (AiPattern::MeleeChaser, AiState::Idle) => { ... }
-    (AiPattern::BossScripted, _) => { handle_boss_ai(entity, &mut ai, &def); }
-    _ => {}
+#[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum SpecialBehavior {
+    /// 特殊挙動なし（標準的な挙動のみ）
+    None,
+
+    /// すり抜け: 他のモンスターと相互衝突せずにすれ違う
+    PassThrough,
+
+    /// マイペース: 時々一定時間立ち止まる
+    MyPace {
+        stop_interval: f32,  // 立ち止まる間隔（秒）
+        stop_duration: f32,  // 立ち止まる時間（秒）
+    },
 }
 ```
+
+**設計思想**:
+- 基本挙動は「直進」のみ
+- 特殊な動きが必要な場合のみ `SpecialBehavior` で拡張
+- 各挙動は独立したシステムで処理（例: `my_pace_system`, 衝突判定でPassThroughをチェック）
+
+**メリット**:
+- シンプルで理解しやすい
+- 個別のシステムとして実装できるため、デバッグが容易
+- 新しい挙動の追加が簡単（enum variantとシステムを追加するだけ）
 
 ---
 
@@ -366,110 +381,117 @@ AIによる自動コード生成・テスト・ドキュメント生成の一貫
 **コンポーネント設計**
 
 ```rust
-#[derive(Component)]
+/// モンスターのスポーンキュー（リソース）
+#[derive(Resource)]
 pub struct MonsterSpawnQueue {
+    pub spawns: Vec<SpawnDefinition>,
     pub waves: Vec<WaveDefinition>,
-    pub current_wave: usize,
-}
-
-#[derive(Component)]
-pub struct StagingArea {
-    pub position: Vec2,        // 待機位置（画面端）
-    pub direction: Direction,  // 進行方向（Left/Right/Up/Down）
+    pub timer: f32,
+    pub processed_wave_indices: Vec<usize>,  // 処理済みWaveのインデックス
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MonsterState {
-    Staging,      // 画面端で待機中
-    Moving,       // 移動中
-    Attacking,    // 攻撃中
-    Dying,        // 死亡モーション中
+    Staging,   // 画面端で待機中
+    Moving,    // 移動中
+    Reached,   // 到達（消滅待ち）
 }
 
-#[derive(Clone)]
+/// Wave定義（特定の時刻に出現するモンスターのグループ）
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WaveDefinition {
-    pub monsters: Vec<MonsterKind>,
-    pub spawn_interval: f32,  // 秒単位
+    /// Wave開始時間（ゲーム開始からの経過時間・秒）
+    pub start_time: f32,
+    /// このWaveでスポーンするモンスターのリスト
+    pub monsters: Vec<SpawnDefinition>,
+}
+
+/// モンスターのスポーン定義
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpawnDefinition {
+    pub kind: MonsterKind,
     pub direction: Direction,
+    /// スポーン位置（進行方向に垂直な軸の座標）
+    /// Right/Leftの場合はy座標、Up/Downの場合はx座標を指定
+    pub grid_pos: i32,
+    pub delay: f32,  // Wave開始時刻からの相対遅延（秒）
 }
 ```
 
 **スポーンシステムの流れ**
 
-1. **Wave定義の読み込み**（`OnEnter(GameState::InGame)`）
-   - RON/JSONから Wave 構成を読み込み
-   - `MonsterSpawnQueue` リソースに登録
+1. **Wave定義の読み込み**（`Startup`システム）
+   - RONファイルから Wave 構成を非同期ロード
+   - アセットが読み込まれたら `MonsterSpawnQueue` リソースに登録
 
 2. **ステージングフェーズ**（`MonsterState::Staging`）
-   - モンスターを画面端の `StagingArea` に配置
-   - 見た目：待機モーション（アイドルアニメーション）
-   - 待機時間：数秒〜数分程度（Wave設計次第で調整可能）
+   - モンスターを画面端（フィールド外）に配置
+   - `StagingTimer` で待機時間を管理
+   - 待機時間：定数 `STAGING_DURATION`（通常2秒程度）
 
 3. **移動開始**（`MonsterState::Staging` → `MonsterState::Moving`）
-   - タイマー経過で `MonsterState::Moving` に遷移
-   - 通常のAI・移動システムが動作開始
+   - `StagingTimer` 経過で `MonsterState::Moving` に遷移
+   - 移動システムが動作開始（衝突判定・移動・待機メーター更新）
 
 **サンプルコード**
 
 ```rust
-fn spawn_wave_system(
+/// モンスターをスポーンするシステム
+pub fn spawn_monsters_system(
     mut commands: Commands,
     time: Res<Time>,
-    mut queue: ResMut<MonsterSpawnQueue>,
+    spawn_queue: Option<ResMut<MonsterSpawnQueue>>,
     monster_defs: Res<MonsterDefinitions>,
     asset_server: Res<AssetServer>,
 ) {
-    if queue.current_wave >= queue.waves.len() {
-        return; // 全Wave完了
+    // MonsterSpawnQueueが初期化されるまで待機
+    let Some(mut spawn_queue) = spawn_queue else {
+        return;
+    };
+    spawn_queue.timer += time.delta_secs();
+
+    // Wave開始時間を確認して、新しいWaveのモンスターをスポーンキューに追加
+    for (index, wave) in spawn_queue.waves.iter().enumerate() {
+        if spawn_queue.processed_wave_indices.contains(&index) {
+            continue;
+        }
+
+        if spawn_queue.timer >= wave.start_time {
+            for monster_spawn in &wave.monsters {
+                let mut spawn_def = monster_spawn.clone();
+                // delayはWave開始時間からの相対時間なので、絶対時間に変換
+                spawn_def.delay = wave.start_time + monster_spawn.delay;
+                spawn_queue.spawns.push(spawn_def);
+            }
+            spawn_queue.processed_wave_indices.push(index);
+        }
     }
 
-    let wave = &queue.waves[queue.current_wave];
+    // スポーン予定のモンスターをチェック
+    let mut spawned_indices = Vec::new();
+    for (index, spawn_def) in spawn_queue.spawns.iter().enumerate() {
+        if spawn_queue.timer >= spawn_def.delay {
+            spawn_monster(&mut commands, spawn_def, &monster_defs, &asset_server);
+            spawned_indices.push(index);
+        }
+    }
 
-    // spawn_interval 経過ごとにモンスターを生成
-    if time.elapsed_seconds() > queue.next_spawn_time {
-        let monster_kind = wave.monsters[queue.spawn_index];
-        let def = monster_defs.get(monster_kind);
-
-        let staging_pos = get_staging_position(wave.direction);
-
-        commands.spawn((
-            Monster,
-            monster_kind,
-            MonsterState::Staging,
-            StagingArea {
-                position: staging_pos,
-                direction: wave.direction,
-            },
-            Health { current: def.hp, max: def.hp },
-            SpriteBundle {
-                texture: asset_server.load(def.texture_path),
-                transform: Transform::from_translation(staging_pos.extend(0.0)),
-                ..default()
-            },
-            AnimationState::Idle, // 待機モーション
-        ));
-
-        queue.spawn_index += 1;
-        queue.next_spawn_time = time.elapsed_seconds() + wave.spawn_interval;
+    // スポーン済みの定義を削除
+    for index in spawned_indices.iter().rev() {
+        spawn_queue.spawns.remove(*index);
     }
 }
 
-fn staging_to_moving_system(
-    mut commands: Commands,
-    mut query: Query<(Entity, &mut MonsterState, &StagingArea, &mut AnimationState), With<Monster>>,
+/// ステージングタイマーを更新し、時間経過でMoving状態に遷移
+pub fn staging_timer_system(
     time: Res<Time>,
+    mut query: Query<(&mut StagingTimer, &mut MonsterState), With<Monster>>,
 ) {
-    for (entity, mut state, staging, mut anim) in &mut query {
+    for (mut timer, mut state) in &mut query {
         if *state == MonsterState::Staging {
-            // 待機時間経過で移動開始
-            if time.elapsed_seconds() > staging.enter_time + staging.duration {
+            timer.remaining -= time.delta_secs();
+            if timer.remaining <= 0.0 {
                 *state = MonsterState::Moving;
-                *anim = AnimationState::Walking; // 移動モーション
-
-                // 移動コンポーネントを追加
-                commands.entity(entity).insert(Velocity {
-                    value: get_direction_vector(staging.direction) * def.speed,
-                });
             }
         }
     }
@@ -543,14 +565,133 @@ impl MonsterPool {
 
 ---
 
-## 10. 現在の実装における独自システム
+## 10. カスタムアセットローダー
+
+本プロジェクトでは、RONファイルからステージ定義とモンスター定義を読み込むための
+**カスタムアセットローダー**を実装している。
+
+### 10.1 StageAssetPlugin
+
+`core/stage_asset.rs` でカスタムアセットローダーを定義：
+
+```rust
+pub struct StageAssetPlugin;
+
+impl Plugin for StageAssetPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_asset::<StageLevelAsset>()
+            .init_asset_loader::<StageLevelAssetLoader>()
+            .init_asset::<MonsterDefinitionsAsset>()
+            .init_asset_loader::<MonsterDefinitionsAssetLoader>();
+    }
+}
+```
+
+### 10.2 アセット定義
+
+**ステージレベルアセット**:
+```rust
+#[derive(Asset, TypePath, Debug, Clone, Deserialize)]
+pub struct StageLevelAsset {
+    pub stage: u32,
+    pub level: u32,
+    pub waves: Vec<WaveDefinition>,
+}
+```
+
+**モンスター定義アセット**:
+```rust
+#[derive(Asset, TypePath, Debug, Clone, Deserialize)]
+pub struct MonsterDefinitionsAsset {
+    pub definitions: Vec<MonsterDefinition>,
+}
+```
+
+### 10.3 非同期ロードの仕組み
+
+1. **Startupシステムでロード開始**:
+   ```rust
+   fn load_monster_definitions_system(mut commands: Commands, asset_server: Res<AssetServer>) {
+       let handle: Handle<MonsterDefinitionsAsset> = asset_server.load("monsters.ron");
+       commands.insert_resource(MonsterDefinitionsLoader {
+           handle,
+           loaded: false,
+       });
+   }
+   ```
+
+2. **Updateシステムでロード完了を監視**:
+   ```rust
+   fn initialize_monster_definitions_system(
+       mut loader: ResMut<MonsterDefinitionsLoader>,
+       monster_def_assets: Res<Assets<MonsterDefinitionsAsset>>,
+       mut definitions: ResMut<MonsterDefinitions>,
+   ) {
+       if loader.loaded {
+           return;
+       }
+
+       if let Some(monster_def_asset) = monster_def_assets.get(&loader.handle) {
+           *definitions = MonsterDefinitions::from_hashmap(monster_def_asset.to_hashmap());
+           loader.loaded = true;
+       }
+   }
+   ```
+
+### 10.4 RONファイルの例
+
+**assets/monsters.ron**:
+```ron
+(
+    definitions: [
+        (
+            kind: Kappa,
+            speed: 100.0,
+            size: 0.6,
+            color: (0.2, 0.8, 0.5),
+            wait_threshold: 10.0,
+            special_behavior: None,
+            texture_path: "img/kappa.png",
+        ),
+        // ... 他のモンスター定義
+    ]
+)
+```
+
+**assets/stages/stage1_level1.ron**:
+```ron
+(
+    stage: 1,
+    level: 1,
+    waves: [
+        (
+            start_time: 0.0,
+            monsters: [
+                (kind: Kappa, direction: Right, grid_pos: 5, delay: 0.0),
+                // ... 他のスポーン定義
+            ],
+        ),
+    ]
+)
+```
+
+### 10.5 利点
+
+- **データ駆動**: コードを変更せずにゲームバランスを調整可能
+- **非同期ロード**: ゲーム起動時の読み込み時間を最小化
+- **型安全**: RONのデシリアライズ時に構造の検証が行われる
+- **拡張性**: 新しいステージやモンスターの追加が容易
+
+---
+
+## 11. 現在の実装における独自システム
 
 本セクションでは、dev_guideの基本方針には記載されていないが、
 現在の実装で導入されている独自のゲームシステムを説明する。
 
 ---
 
-### 10.1 グリッドベース座標管理
+### 11.1 グリッドベース座標管理
 
 本ゲームは**グリッドベースの座標系**を採用しており、
 `core/types.rs` で以下の機能を提供する：
@@ -579,7 +720,7 @@ pub fn is_valid_grid_position(grid_pos: GridPosition, field_width: i32, field_he
 
 ---
 
-### 10.2 設定ファイルの2段階分離
+### 11.2 設定ファイルの2段階分離
 
 `core/config.rs` と `core/level.rs` で設定を明確に分離：
 
@@ -619,7 +760,7 @@ pub const VOID_GAIN_PER_DESPAWN: f32 = 5.0;
 
 ---
 
-### 10.3 待機メーター（WaitMeter）システム
+### 11.3 待機メーター（WaitMeter）システム
 
 モンスターが一定時間停止すると消滅する仕組み：
 
@@ -653,7 +794,7 @@ impl WaitMeter {
 
 ---
 
-### 10.4 プレイヤーゲージシステム（魂と虚）
+### 11.4 プレイヤーゲージシステム（魂と虚）
 
 2つの独立したゲージでゲーム進行を管理：
 
@@ -688,7 +829,7 @@ pub struct VoidGauge {
 
 ---
 
-### 10.5 MonsterPropertyとMovementの分離
+### 11.5 MonsterPropertyとMovementの分離
 
 モンスターの「基本パラメータ」と「実際の移動パラメータ」を分離：
 
@@ -705,17 +846,22 @@ pub struct MonsterProperty {
 pub struct Movement {
     pub direction: Direction,
     pub speed: f32,
+    /// 移動が有効かどうか（特殊挙動で一時停止する場合に使用）
+    pub enabled: bool,
 }
 ```
 
 **設計意図**：
 - アイテム効果（例：ぐるぐる床で方向転換）を適用しても、元の状態にリセット可能
 - デバッグ時に「本来の挙動」と「現在の挙動」を比較可能
+- **`enabled`フィールド**: 特殊挙動（MyPace等）で一時的に移動を停止する際に使用
+  - `enabled = false` にすると、移動システムが速度を0として扱う
+  - 衝突判定による停止とは別の、意図的な停止を実現
 - 将来的なバフ/デバフシステムの基盤
 
 ---
 
-### 10.6 衝突検出システム
+### 11.6 衝突検出システム
 
 モンスター同士の衝突を検出し、停止させる：
 
@@ -742,7 +888,7 @@ pub struct CollisionState {
 
 ---
 
-### 10.7 アイテム配置システム
+### 11.7 アイテム配置システム
 
 マウスクリックでグリッド上にアイテムを配置：
 
@@ -772,7 +918,7 @@ pub struct RotationTile {
 
 ---
 
-### 10.8 Gizmosによるデバッグ描画
+### 11.8 Gizmosによるデバッグ描画
 
 開発効率向上のため、視覚的フィードバックを提供：
 
@@ -793,7 +939,7 @@ pub fn draw_grid_system(mut gizmos: Gizmos) {
 
 ---
 
-### 10.9 システムのチェーン実行
+### 11.9 システムのチェーン実行
 
 Bevy 0.17では `.chain()` でシステムの実行順序を厳密に制御：
 
@@ -825,20 +971,153 @@ Bevy 0.17では `.chain()` でシステムの実行順序を厳密に制御：
 
 ---
 
-### 10.10 まとめ
+### 11.10 特殊挙動システムの詳細
+
+セクション4.3で紹介した特殊挙動システムの実装詳細を説明する。
+
+#### MyPace挙動の実装
+
+**コンポーネント定義**:
+```rust
+/// マイペース挙動用のタイマーコンポーネント
+#[derive(Component)]
+pub struct MyPaceTimer {
+    pub interval_timer: Timer,
+    pub stop_timer: Timer,
+    pub is_stopped: bool,
+}
+```
+
+**システム実装** (`monster/special_behavior.rs`):
+```rust
+pub fn my_pace_system(
+    time: Res<Time>,
+    mut query: Query<(&SpecialBehavior, &mut MyPaceTimer, &mut Movement)>,
+) {
+    for (behavior, mut timer, mut movement) in &mut query {
+        if let SpecialBehavior::MyPace { .. } = behavior {
+            if timer.is_stopped {
+                // 立ち止まり中
+                timer.stop_timer.tick(time.delta());
+                if timer.stop_timer.is_finished() {
+                    timer.is_stopped = false;
+                    movement.enabled = true;  // 移動再開
+                }
+            } else {
+                // 通常移動中
+                timer.interval_timer.tick(time.delta());
+                if timer.interval_timer.is_finished() {
+                    timer.is_stopped = true;
+                    timer.stop_timer.reset();
+                    movement.enabled = false;  // 移動停止
+                }
+            }
+        }
+    }
+}
+```
+
+**特徴**:
+- `Movement.enabled` フィールドを制御して移動のON/OFFを切り替え
+- 衝突判定とは独立した停止メカニズム
+- タイマーベースのシンプルな実装
+
+#### PassThrough挙動の実装
+
+衝突検出システム内で特殊挙動をチェック：
+
+```rust
+pub fn collision_detection_system(
+    mut query: Query<(..., Option<&SpecialBehavior>), With<Monster>>,
+) {
+    for (entity, ..., special_behavior) in &mut query {
+        // PassThrough挙動を持つモンスターは衝突判定をスキップ
+        if matches!(special_behavior, Some(SpecialBehavior::PassThrough)) {
+            collision_state.is_colliding = false;
+            continue;
+        }
+        // ... 通常の衝突判定
+    }
+}
+```
+
+**特徴**:
+- 既存の衝突検出システムに条件分岐を追加するだけ
+- 新しいシステムを追加する必要がない
+- コンポーネントの有無で挙動を切り替え
+
+---
+
+### 11.11 ゲージUI実装（Bevy 0.15+新UI）
+
+Bevy 0.15以降の新UIシステム（`Node`, `Text`, `BackgroundColor`等）を使用したゲージ表示。
+
+**UI構造**:
+```rust
+pub fn setup_gauges_ui_system(mut commands: Commands) {
+    commands
+        .spawn((
+            GaugesPanel,
+            Node {
+                position_type: PositionType::Absolute,
+                right: Val::Px(20.0),
+                bottom: Val::Px(20.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(10.0),
+                ..default()
+            },
+        ))
+        .with_children(|parent| {
+            // ゲージ行を作成
+            create_gauge_row(parent, "Spirit", ...);
+            create_gauge_row(parent, "Void", ...);
+        });
+}
+```
+
+**プログレスバー更新**:
+```rust
+pub fn update_spirit_gauge_ui_system(
+    gauges: Res<PlayerGauges>,
+    mut bar_query: Query<&mut Node, With<SpiritGaugeBar>>,
+    mut text_query: Query<&mut Text, With<SpiritGaugeText>>,
+) {
+    for mut node in bar_query.iter_mut() {
+        node.width = Val::Percent(gauges.spirit.ratio() * 100.0);
+    }
+
+    for mut text in text_query.iter_mut() {
+        **text = format!("{:.0}/{:.0}", gauges.spirit.current, gauges.spirit.max);
+    }
+}
+```
+
+**Bevy 0.15+の変更点**:
+- `Style` → `Node` コンポーネントに変更
+- `TextBundle` → `Text` コンポーネント + `TextFont` + `TextColor` に分離
+- `Color::rgb()` → `Color::srgb()` に変更
+
+---
+
+### 11.12 まとめ
 
 現在の実装では、dev_guideの基本方針に加えて以下の独自システムを導入：
 
-| システム            | 目的                       | 実装場所                   |
-| --------------- | ------------------------ | ---------------------- |
-| グリッド座標管理        | 座標変換の一貫性                 | `core/types.rs`        |
-| 設定の2段階分離        | 技術/バランスの明確化              | `core/config.rs` など    |
-| WaitMeter       | モンスター停止時のペナルティ           | `monster/wait.rs`      |
-| PlayerGauges    | ゲーム進行管理（魂/虚）             | `player/gauges.rs`     |
-| Property/Movement分離 | アイテム効果の適用とリセット           | `monster/components.rs` |
-| 衝突検出            | モンスター同士の相互作用             | `monster/collision.rs` |
-| アイテム配置          | プレイヤーの戦略的介入              | `item/placement.rs`    |
-| Gizmos描画        | デバッグ効率向上                 | `world/grid.rs`        |
-| システムチェーン        | 実行順序の厳密な制御（Bevy 0.17）    | 各 `plugin.rs`         |
+| システム                     | 目的                       | 実装場所                      |
+| ------------------------ | ------------------------ | ------------------------- |
+| カスタムアセットローダー             | RONファイルからのデータ駆動読み込み      | `core/stage_asset.rs`     |
+| グリッド座標管理                 | 座標変換の一貫性                 | `core/types.rs`           |
+| 設定の2段階分離                 | 技術/バランスの明確化              | `core/config.rs` など       |
+| WaitMeter                | モンスター停止時のペナルティ           | `monster/wait.rs`         |
+| PlayerGauges             | ゲーム進行管理（魂/虚）             | `player/gauges.rs`        |
+| Property/Movement分離      | アイテム効果の適用とリセット           | `monster/components.rs`   |
+| Movement.enabled         | 特殊挙動による一時停止              | `monster/components.rs`   |
+| SpecialBehavior          | モンスター個別挙動の拡張             | `monster/special_behavior.rs` |
+| SpawnDefinition          | 柔軟なモンスター配置               | `monster/spawn.rs`        |
+| 衝突検出                     | モンスター同士の相互作用             | `monster/collision.rs`    |
+| アイテム配置                   | プレイヤーの戦略的介入              | `item/placement.rs`       |
+| ゲージUI（Bevy 0.15+新UI）     | プレイヤーへの視覚的フィードバック        | `ui/gauges.rs`            |
+| Gizmos描画                 | デバッグ効率向上                 | `world/grid.rs`           |
+| システムチェーン                 | 実行順序の厳密な制御（Bevy 0.17）    | 各 `plugin.rs`            |
 
 これらは**プロトタイプフェーズの実装**であり、将来的なデータ駆動化・モンスター種類の拡張に備えた基盤となっている。
