@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use crate::core::{config::*, types::*};
+use crate::core::{config::*, types::*, level};
+use crate::feature::player::PlayerGauges;
 use super::components::*;
 
 /// マウスクリックでアイテムを配置するシステム
@@ -11,6 +12,8 @@ pub fn place_item_on_click(
     camera_query: Query<(&Camera, &GlobalTransform)>,
     // 既存のアイテムを削除するため
     existing_items: Query<(Entity, &RotationTile), With<Item>>,
+    // プレイヤーゲージ
+    mut gauges: ResMut<PlayerGauges>,
 ) {
     if mouse_button.just_pressed(MouseButton::Left) {
         // マウス座標をワールド座標に変換
@@ -19,6 +22,23 @@ pub fn place_item_on_click(
 
             // グリッド範囲内チェック
             if is_valid_grid_position(grid_pos, FIELD_WIDTH, FIELD_HEIGHT) {
+                // 魂を消費（不足していれば設置できない）
+                if !gauges.spirit.consume(level::ITEM_PLACEMENT_COST) {
+                    info!(
+                        "アイテム設置失敗: 魂が不足しています（必要: {}, 現在: {:.1}）",
+                        level::ITEM_PLACEMENT_COST,
+                        gauges.spirit.current
+                    );
+                    return;
+                }
+
+                info!(
+                    "アイテム設置: 魂 -{} ({:.1}/{:.1})",
+                    level::ITEM_PLACEMENT_COST,
+                    gauges.spirit.current,
+                    gauges.spirit.max
+                );
+
                 // 同じ座標に既存のアイテムがあれば削除（上書き）
                 for (entity, rotation_tile) in existing_items.iter() {
                     if rotation_tile.grid_pos == grid_pos {
