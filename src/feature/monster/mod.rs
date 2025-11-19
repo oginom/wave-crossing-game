@@ -4,7 +4,7 @@ mod special_behavior;
 mod spawn;
 mod staging;
 mod movement;
-mod collision;
+pub mod collision;
 mod despawn;
 mod wait;
 mod events;

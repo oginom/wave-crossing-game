@@ -37,3 +37,9 @@ impl Default for SwampEffect {
 /// 風の効果コンポーネント
 #[derive(Component, Debug, Clone, Copy)]
 pub struct WindEffect;
+
+/// 泥沼の上にいることを示すマーカーコンポーネント
+#[derive(Component, Debug, Clone, Copy)]
+pub struct OnSwamp {
+    pub speed_multiplier: f32,
+}
