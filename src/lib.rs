@@ -7,6 +7,7 @@ use core::StageAssetPlugin;
 use feature::world::WorldPlugin;
 use feature::monster::MonsterPlugin;
 use feature::item::ItemPlugin;
+use feature::obstacle::ObstaclePlugin;
 use feature::player::PlayerPlugin;
 
 #[derive(States, Default, Debug, PartialEq, Eq, Hash, Clone)]
@@ -26,6 +27,7 @@ impl Plugin for AppPlugin {
                 WorldPlugin,
                 MonsterPlugin,
                 ItemPlugin,
+                ObstaclePlugin,
                 PlayerPlugin,
             ));
     }
