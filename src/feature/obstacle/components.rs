@@ -29,7 +29,7 @@ pub struct SwampEffect {
 impl Default for SwampEffect {
     fn default() -> Self {
         Self {
-            speed_multiplier: 0.5,
+            speed_multiplier: crate::core::level::SWAMP_SPEED_MULTIPLIER,
         }
     }
 }

@@ -140,7 +140,7 @@ pub fn wind_effect_system(
                         start_pos: transform.translation.xy(),
                         target_pos: new_world_pos,
                         elapsed: 0.0,
-                        duration: 0.2,
+                        duration: crate::core::level::WIND_PUSH_DURATION,
                     });
 
                     // 通常の移動を停止

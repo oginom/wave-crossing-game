@@ -40,3 +40,13 @@ pub const VOID_GAIN_PER_DESPAWN: f32 = 5.0;
 
 /// アイテム設置時の魂コスト
 pub const ITEM_PLACEMENT_COST: f32 = 30.0;
+
+// ========================================
+// 障害物関連
+// ========================================
+
+/// 泥沼の速度倍率
+pub const SWAMP_SPEED_MULTIPLIER: f32 = 0.1;
+
+/// 風の押し出しアニメーション時間（秒）
+pub const WIND_PUSH_DURATION: f32 = 0.2;
