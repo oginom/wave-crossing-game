@@ -40,5 +40,15 @@
                 (kind: Kappa, direction: Left, grid_pos: 8, delay: 4.0),
             ],
         ),
-    ]
+    ],
+    obstacles: [
+        // 泥沼
+        (kind: Swamp, grid_pos: (x: 3, y: 3)),
+        (kind: Swamp, grid_pos: (x: 6, y: 7)),
+        (kind: Swamp, grid_pos: (x: 4, y: 8)),
+        // 風
+        (kind: Wind, grid_pos: (x: 5, y: 2)),
+        (kind: Wind, grid_pos: (x: 8, y: 8)),
+        (kind: Wind, grid_pos: (x: 2, y: 5)),
+    ],
 )

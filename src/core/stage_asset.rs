@@ -5,6 +5,7 @@ use bevy::{
 use serde::Deserialize;
 use std::collections::HashMap;
 use crate::feature::monster::{StageLevel, WaveDefinition, MonsterDefinition, MonsterKind};
+use crate::feature::obstacle::ObstacleDefinition;
 
 /// ステージレベルファイルの構造
 #[derive(Asset, TypePath, Debug, Clone, Deserialize)]
@@ -12,6 +13,8 @@ pub struct StageLevelAsset {
     pub stage: u32,
     pub level: u32,
     pub waves: Vec<WaveDefinition>,
+    #[serde(default)]
+    pub obstacles: Vec<ObstacleDefinition>,
 }
 
 impl StageLevelAsset {

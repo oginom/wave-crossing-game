@@ -1,6 +1,7 @@
 mod components;
 mod definitions;
 mod effects;
+mod spawn;
 mod plugin;
 
 pub use components::*;

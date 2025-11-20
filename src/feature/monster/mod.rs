@@ -13,6 +13,6 @@ mod plugin;
 pub use components::*;
 pub use definitions::{MonsterDefinition, MonsterDefinitions, MonsterKind, MonsterDefinitionsLoader};
 pub use special_behavior::SpecialBehavior;
-pub use spawn::{StageLevel, WaveDefinition};
+pub use spawn::{StageLevel, WaveDefinition, StageLevelLoader};
 pub use events::*;
 pub use plugin::MonsterPlugin;
